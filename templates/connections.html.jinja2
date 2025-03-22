@@ -1,0 +1,23 @@
+<h1 class="text-3xl font-bold text-center mb-6">Mis Conexiones</h1>
+<div class="text-right">
+	<button id="confirm-selection-btn" hx-get="/activities" hx-trigger="click" hx-swap="innerHTML" hx-target="#main" hx-vals="js:{connections: getSelectedConnections()}"
+		class="mb-4 px-4 py-2 bg-green-600 hover:bg-green-500 text-white font-semibold rounded-lg shadow-md cursor-pointer">
+		Confirmar Selección
+	</button>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+	{% for connection in connections %}
+	<div id="{{ connection.display_name }}"
+		class="card bg-gray-800 shadow-md rounded-lg overflow-hidden transition-transform transform hover:scale-105 hover:bg-gray-700 cursor-pointer active:scale-95"
+		onclick="toggleCard(document.getElementById('{{ connection.display_name }}'))">
+		<img src="{{connection.profile_image_url_large}}" alt="{{connection.full_name}}" class="w-full h-48 object-cover">
+		<div class="p-4">
+			<h2 class="text-xl font-semibold">{{connection.full_name}}</h2>
+		</div>
+	</div>
+	{% endfor %}
+	{% if not connections %}
+	<li>Sin conexiones</li>
+	{% endif %}
+</div>
+<script src="{{ url_for('static', path='/js/connections.js') }}"></script>
