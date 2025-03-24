@@ -1,42 +1,47 @@
+import logging
 import os
-from datetime import date, datetime
-from typing import Annotated
+from datetime import date, datetime, timedelta
 
-from fastapi import FastAPI, Header, Query, Request
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from pyutils.shortcuts import week_range_from_date
+from pyutils.shortcuts import week_range_from_date, weeks_between
+from rgarmin import filters
 from rgarmin.client import GarminClient
-from rgarmin.client_mock import GarminMockClient
+from rgarmin.services import activities
 
 DEBUG = os.getenv("DEBUG", False)
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
-garmin = GarminMockClient() if DEBUG else GarminClient()
-templates = Jinja2Templates(directory="templates")
-
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+templates = Jinja2Templates(directory="templates")
+templates.env.filters["translate"] = filters.translate
+templates.env.filters["format_duration"] = filters.format_duration
+templates.env.filters["format_datetime"] = filters.format_datetime
+templates.env.filters["format_time"] = filters.format_time
+
+garmin = GarminClient()
 
 
 @app.get("/")
-async def index(request: Request):
-    return templates.TemplateResponse(request=request, name="index.html.jinja2")
+async def index(_: Request):
+    return RedirectResponse(url="/connections")
 
 
 @app.get("/connections")
-async def list_connections(
-    request: Request,
-    hx_request: Annotated[str | None, Header()] = None,
-):
+async def list_connections(request: Request, partial: bool = Query(False, alias="p")):
     connections = garmin.get_connections()
-    if hx_request:
+    if "text/html" in request.headers["accept"]:
+        is_htmx = request.headers.get("HX-Request", False)
         return templates.TemplateResponse(
             request=request,
-            name="connections.html.jinja2",
-            context={"connections": connections},
+            name="connections.html.jinja2" if partial and is_htmx else "_base.html.jinja2",
+            context={"connections": connections, "page": "connections.html.jinja2"},
         )
     return JSONResponse(content=jsonable_encoder(connections))
 
@@ -47,34 +52,28 @@ async def list_activities(
     connections: list[str] = Query(...),
     start_date: date = Query(datetime.today().date()),
     end_date: date | None = Query(None),
-    hx_request: Annotated[str | None, Header()] = None,
+    partial: bool = Query(False, alias="p"),
 ):
-    assert len(connections) > 0, "no connections"
-    assert len(connections) <= 5, "too many connections"  # testing limit to avoid over-requesting
-
     if not end_date:
         start_date, end_date = week_range_from_date(start_date)
 
-    # TODO: in the tamplete, we need to group the activities by weekday
-    # TODO: display the activities showing which connection did it
+    if not connections or len(connections) == 0:
+        raise HTTPException(status_code=400, detail="At least one connection is required.")
+    if len(connections) > 10:
+        raise HTTPException(status_code=400, detail="Too many connections. Maximum allowed: 10.")
+    if end_date < start_date:
+        raise HTTPException(status_code=400, detail="End date must be greater than start date.")
+    if weeks_between(start_date, end_date) > timedelta(weeks=2):
+        raise HTTPException(status_code=400, detail="Maximum allowed date range is 2 weeks.")
 
-    connection_profiles = garmin.get_connections()
-    response = {
-        "start_date": start_date,
-        "end_date": end_date,
-        "connections": [
-            {
-                "display_name": connection,
-                "profile": next(c for c in connection_profiles if c.display_name == connection),
-                "activities": garmin.get_connection_activities_by_date(connection, start_date, end_date),
-            }
-            for connection in connections
-        ],
-    }
-    if hx_request:
+    if "text/html" in request.headers["accept"]:
+        is_htmx = request.headers.get("HX-Request", False)
+        context = activities.get_html_activities(garmin, connections, start_date, end_date)
+        context["page"] = "activities.html.jinja2"
         return templates.TemplateResponse(
             request=request,
-            name="activities.html.jinja2",
-            context=response,
+            name="activities.html.jinja2" if partial and is_htmx else "_base.html.jinja2",
+            context=context,
         )
+    response = activities.get_json_activities(garmin, connections, start_date, end_date)
     return JSONResponse(content=jsonable_encoder(response))

@@ -1,32 +1,67 @@
-<div class="max-w-6xl mx-auto">
+{% if errors %}
+<div id="error-banner" class="bg-red-600 text-white p-4 mb-4 rounded-lg shadow-lg relative max-w-6xl mx-auto">
+	<button onclick="document.getElementById('error-banner').remove()"
+		class="absolute top-2 right-2 p-1 rounded-full hover:bg-red-700 transition cursor-pointer">
+		<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+			<line x1="18" y1="6" x2="6" y2="18"></line>
+			<line x1="6" y1="6" x2="18" y2="18"></line>
+		</svg>
+	</button>
+	<ul>
+		{% for connection, error in errors.items() %}
+		<li><strong>{{ connection }}:</strong> {{ error | translate }}</li>
+		{% endfor %}
+	</ul>
+</div>
+{% endif %}
+
+<div id="activity-container" class="max-w-6xl mx-auto">
 	<div class="flex justify-between items-center mb-6">
-		<button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md" onclick="changeWeek(-1)">Previous</button>
-		<h2 class="text-2xl font-semibold">{{ start_date }} - {{ end_date }}</h2>
-		<button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md" onclick="changeWeek(1)">Next</button>
+		<button hx-get="{{ pagination.prev_url }}" hx-trigger="click" hx-target="#activity-container" hx-swap="innerHTML" hx-replace-url="true"
+			class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md">
+			{{ "Previous" | translate }}
+		</button>
+		<h2 class="text-2xl font-semibold">{{ pagination.start_date }} || {{ pagination.end_date }}</h2>
+		<button hx-get="{{ pagination.next_url }}" hx-trigger="click" hx-target="#activity-container" hx-swap="innerHTML" hx-replace-url="true"
+			class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md">
+			{{ "Next" | translate }}
+		</button>
 	</div>
 
-	{% for connection in connections %}
+	{% for day, activities in daily_activities.items() %}
 	<div class="mb-8">
-		<h3 class="text-xl font-bold mb-4">{{ connection.display_name }}</h3>
-		<div class="grid grid-cols-7 gap-4">
-			{% for day in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] %}
-			<div class="bg-gray-800 p-4 rounded-lg shadow-lg">
-				<h4 class="text-lg font-semibold mb-3">{{ day }}</h4>
-				<div class="space-y-2">
-					{% set day_activities = connection.activities | selectattr("weekday", "equalto", day) | list %}
-					{% for activity in day_activities %}
-					<div class="p-3 bg-gray-700 rounded-lg shadow">
-						<p class="font-medium">{{ activity.activity_name }}</p>
-						<p class="text-sm text-gray-400">{{ activity.start_time_local }}</p>
-						<p class="text-sm text-gray-400">{{ activity.activity_type }}</p>
+		<div class="bg-gray-800 p-4 rounded-lg shadow-lg">
+			<h4 class="text-lg font-semibold mb-3">{{ day | translate }} ({{ days[loop.index-1] }})</h4>
+			<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+				{% for activity in activities %}
+				<div id="{{ activity.details.activity_id }}"
+					class="flex bg-gray-700 p-4 rounded-lg shadow-lg hover:bg-green-500 cursor-pointer"
+					onmouseenter="onActivityHoverIn({{ activity.details.similar_activities}})"
+					onmouseleave="onActivityHoverOut({{ activity.details.similar_activities}})"
+					onclick="openActivityPage({{ activity.details.activity_id }})"
+				>
+					<div class="flex flex-col items-center mr-4">
+						<img src="{{ activity.profile.profile_image_url_small }}" alt="{{ activity.profile.full_name }}"
+							class="w-14 h-14 rounded-full border-2 border-blue-500">
+						<div class="mt-2 px-3 py-1 bg-blue-600 text-white text-sm rounded-lg">
+							{{ activity.details.activity_type.type_key | translate }}
+						</div>
 					</div>
-					{% endfor %}
+
+					<div class="flex-1">
+						<h4 class="text-lg font-semibold text-white">{{ activity.profile.full_name.split(' ')[0] }}</h4>
+						<p class="text-sm text-gray-200">{{ activity.details.activity_name }}</p>
+						<p class="text-sm text-gray-200">Comienzo: {{ activity.details.start_time_local | format_time }}</p>
+						<p class="text-sm text-gray-200">Duración: {{ activity.details.duration | format_duration }}</p>
+					</div>
 				</div>
+				{% endfor %}
 			</div>
-			{% endfor %}
 		</div>
 	</div>
 	{% endfor %}
 </div>
 
+{% block scripts %}
 <script src="{{ url_for('static', path='/js/activities.js') }}"></script>
+{% endblock %}

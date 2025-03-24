@@ -1,9 +1,9 @@
-function getSelectedConnections() {
-    const selectedConnectionIds = [];
+function onConfirmSelectionClick() {
+    const url = new URL("/activities", window.location.origin);
     for (card of document.querySelectorAll(".bg-green-500")) {
-        selectedConnectionIds.push(card.id);
+        url.searchParams.append("connections", card.id);
     }
-    return selectedConnectionIds;
+    window.location.href = url.toString();
 }
 
 function toggleCard(card) {

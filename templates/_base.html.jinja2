@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>RGarmin</title>
+        <link href="{{url_for('static',path='/css/app.css')}}" rel="stylesheet" />
+    </head>
+	<body class="bg-gray-900 text-white">
+		<header class="bg-gray-800 p-4 shadow-lg">
+			<div class="flex items-center justify-between">
+				<div class="flex items-center">
+					<h1 class="text-2xl font-bold text-white">RGarmin</h1>
+				</div>
+				<nav class="flex space-x-4">
+					<a hx-get="/connections?p=true" hx-trigger="click" hx-target="#main" hx-swap="innerHTML" hx-push-url="true"
+						class="text-white text-sm hover:bg-blue-600 p-3 rounded-lg cursor-pointer">
+						Conexiones
+					</a>
+				</nav>
+			</div>
+		</header>
+        <main id="main" class="p-6">
+			{% block main %}
+				{% include page %}
+			{% endblock %}
+        </main>
+        <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+		{% block scripts %}{% endblock %}
+		<script>
+		document.body.addEventListener("htmx:configRequest", function(evt) {
+			evt.detail.headers["Accept"] = "text/html";
+		});
+		</script>
+    </body>
+</html>

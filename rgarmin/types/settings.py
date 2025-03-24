@@ -5,7 +5,7 @@ from inspect import signature
 
 from garth import http
 
-from pyutils.strings import camel_to_snake_dict
+from pyutils.dicts import camel_to_snake_dict
 
 logger = logging.getLogger(__name__)
 

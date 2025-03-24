@@ -1,8 +1,8 @@
 import logging
-from dataclasses import dataclass
-from datetime import datetime, timezone
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from inspect import signature
-from typing import Any
+from typing import Any, override
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +55,29 @@ class ActivityListItem:
     active_sets: int | None = None
     max_speed: float | None = None
     avg_stride_length: float | None = None
+    similar_activities: list[int] = field(default_factory=list)
+
+    @override
+    def __eq__(self, value: object, /) -> bool:
+        assert isinstance(value, ActivityListItem), "Can only compare with another ActivityListItem"
+        isSimilar = True
+
+        # activities started at a similar time
+        start_time = self.start_time_local - timedelta(minutes=1)
+        end_time = self.start_time_local + timedelta(minutes=1)
+        isSimilar &= start_time <= value.start_time_local <= end_time
+
+        # activities have similar distance
+        if self.distance and value.distance:
+            start_distance, end_distance = self.distance * 0.95, self.distance * 1.05
+            isSimilar &= start_distance <= value.distance <= end_distance
+
+        # activities have similar duration
+        if self.duration and value.duration:
+            start_duration, end_duration = self.duration * 0.95, self.duration * 1.05
+            isSimilar &= start_duration <= value.duration <= end_duration
+
+        return isSimilar
 
     @classmethod
     def from_dict(cls, data: dict) -> "ActivityListItem":

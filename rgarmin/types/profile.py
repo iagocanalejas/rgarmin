@@ -16,6 +16,9 @@ class UserProfile:
     profile_visibility: str
     user_roles: list[str]
     user_level: int
+    profile_image_url_small: str
+    profile_image_url_medium: str
+    profile_image_url_large: str
 
     @classmethod
     def from_dict(cls, data: dict) -> "UserProfile":

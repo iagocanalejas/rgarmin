@@ -6,7 +6,7 @@ from getpass import getpass
 import garth as g
 from garth.exc import GarthHTTPError
 
-from pyutils.strings import camel_to_snake_dict
+from pyutils.dicts import camel_to_snake_dict
 from rgarmin.types import Activity, ActivityListItem, ActivityType, Connection, DailySummary, UserProfile, UserSettings
 
 logger = logging.getLogger(__name__)
@@ -197,9 +197,10 @@ class GarminClient:
                 return activities
 
             for a in activity_list:
-                if datetime.fromisoformat(a["startTimeLocal"]).date() < end_date:
+                if datetime.fromisoformat(a["startTimeLocal"]).date() < start_date:
                     return activities
-                activities.append(ActivityListItem.from_dict(camel_to_snake_dict(a)))
+                if datetime.fromisoformat(a["startTimeLocal"]).date() <= end_date:
+                    activities.append(ActivityListItem.from_dict(camel_to_snake_dict(a)))
 
             start = start + DEFAULT_PAGE_SIZE
 
